@@ -15,6 +15,8 @@
 
 using namespace std;
 
+extern int sockfd;
+
 inline void freeIfList(Interface* head) {
     Interface* next;
     while (head) {
@@ -39,17 +41,18 @@ bool net_monitor() {
     }
 
     if_head = NULL;
-    printf("[NetMon]\n");
     for (ifaddrs* cur = ifa; cur; cur = cur->ifa_next) {
-        if (strcmp(cur->ifa_name, "lo") == 0)
+        if (strcmp(cur->ifa_name, "lo") == 0 || strcmp(cur->ifa_name, "wlp4s0") == 0)
             continue;
-        
+
         /* Carrier */
         string carrierName = base + cur->ifa_name + "/carrier";
-        fin = fopen(carrierName.c_str(), "r");
         int carrier;
-        fscanf(fin, "%d", &carrier);
-        fclose(fin);
+        fin = fopen(carrierName.c_str(), "r");
+        if (fin) {
+            fscanf(fin, "%d", &carrier);
+            fclose(fin);
+        }
         if (!carrier)
             continue;
 
@@ -75,9 +78,9 @@ bool net_monitor() {
             continue;
         in_addr ifMask = (in_addr){ 0xFFFFFF };
 
-        printf("%s: ip=%s ", cur->ifa_name, inet_ntoa(ifAddr));
-        printf("mask=%s ", inet_ntoa(ifMask));
-        printf("mac=%02X%02X:%02X%02X:%02X%02X\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        //printf("%s: ip=%s ", cur->ifa_name, inet_ntoa(ifAddr));
+        //printf("mask=%s ", inet_ntoa(ifMask));
+        //printf("mac=%02X%02X:%02X%02X:%02X%02X\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
         Interface* ifc = new Interface;
         ifc->name = cur->ifa_name;
@@ -105,8 +108,13 @@ bool net_monitor() {
     }
     bool ret = ifCount != newIfCount || matches != ifCount;
     if (ret) {
-        for (Interface* ifc = gl->if_head; ifc; ifc = ifc->next)
+        for (Interface* ifc = gl->if_head; ifc; ifc = ifc->next) {
+            struct ip_mreq mreq;
+            mreq.imr_multiaddr.s_addr = inet_addr("224.0.0.9");
+            mreq.imr_interface.s_addr = ifc->addr.s_addr;
+            setsockopt(sockfd, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq));
             close(ifc->sockfd);
+        }
         freeIfList(gl->if_head);
         gl->if_head = if_head;
         int opt = 1;
@@ -125,10 +133,16 @@ bool net_monitor() {
             ifc_addr.sin_family = AF_INET;
             ifc_addr.sin_port = htons(RIP_PORT);
             bind(ifc->sockfd, (sockaddr*)(&ifc_addr), sizeof(sockaddr_in));
+
+            struct ip_mreq mreq;
+            mreq.imr_multiaddr.s_addr = inet_addr("224.0.0.9");
+            mreq.imr_interface.s_addr = ifc->addr.s_addr;
+            setsockopt(sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         }
     }
     else
         freeIfList(if_head);
     freeifaddrs(ifa);
+    printf("[NetMon] %d interface(s)\n", newIfCount);
     return ret;
 }

@@ -10,10 +10,15 @@ using namespace std;
 using namespace chrono;
 
 Global* gl;
+int sockfd;
 
 int main() {
     // Create listening socket
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+    int opt = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(int));
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&opt, sizeof(int));
 
     struct sockaddr_in serv_addr;
     int len = sizeof(serv_addr);
@@ -23,17 +28,9 @@ int main() {
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     bind(sockfd, (struct sockaddr*)(&serv_addr), len);
 
-    struct ip_mreq mreq;
-    mreq.imr_multiaddr.s_addr = inet_addr("224.0.0.9");
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    setsockopt(sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
-
-    int opt = 1;
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(int));
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&opt, sizeof(int));
-
     gl = new Global;
     net_monitor();
+    printf("Initialize: %s\n", strerror(errno));
     gl->start();
 
     sendRIP(RIP_REQUEST);
@@ -44,6 +41,7 @@ int main() {
         int recvlen = recvfrom(sockfd, rip.buf, BUFLEN, 0, (sockaddr*)(&src_addr), (socklen_t*)(&len));
         if (recvlen <= 0)
             continue;
+        printf("[Main] received rip from %s", inet_ntoa(src_addr.sin_addr));
         in_addr_t from = src_addr.sin_addr.s_addr;
         bool isSelf = false;
         for (Interface* ifc = gl->if_head; ifc; ifc = ifc->next)
@@ -51,8 +49,12 @@ int main() {
                 isSelf = true;
                 break;
             }
-        if (isSelf)
+        if (isSelf) {
+            printf(", ignore for loopback\n");
             continue;
+        }
+        else
+            printf("\n");
         
         int tot = recvlen / 20;
         for (int i = 0; i < tot; ++i)

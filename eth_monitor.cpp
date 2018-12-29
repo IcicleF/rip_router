@@ -70,28 +70,29 @@ int arpGet(uint8_t* mac, const string& ifName, const in_addr& ipAddr) {
     close(sfd);
     return ret;
 }
-inline bool copyInfo(Interface* ifc, NextHopInfo* res, in_addr dst) {
-    res->ifIndex = ifc->index;
-    memcpy(res->macFrom, ifc->mac, ETH_ALEN);
-    return arpGet(res->macTo, ifc->name, dst) == 0;
-}
 bool lookupRoute(in_addr dst, NextHopInfo* res) {
     for (Interface* ifc = gl->if_head; ifc; ifc = ifc->next) {
         if (dst.s_addr == ifc->addr.s_addr) {
-            printf("[EthMon] pakcet to self, do not forward\n");
+            //printf("[EthMon] pakcet to self, do not forward\n");
             return false;
         }
-        if ((dst.s_addr & ifc->mask.s_addr) == (ifc->addr.s_addr & ifc->mask.s_addr))
-            return copyInfo(ifc, res, dst);
+        if ((dst.s_addr & ifc->mask.s_addr) == (ifc->addr.s_addr & ifc->mask.s_addr)) {
+            res->ifIndex = ifc->index;
+            memcpy(res->macFrom, ifc->mac, ETH_ALEN);
+            return arpGet(res->macTo, ifc->name, dst) == 0;
+        }
     }
     for (RT* rt = gl->rt_head; rt; rt = rt->next)
         if ((dst.s_addr & rt->mask) == (rt->addr & rt->mask)) {
-            Interface* ifc;
-            for (Interface* ifc = gl->if_head; ifc; ifc = ifc->next)
+            Interface* ifc = NULL;
+            for (ifc = gl->if_head; ifc; ifc = ifc->next)
                 if ((rt->nextHop & ifc->mask.s_addr) == (ifc->addr.s_addr & ifc->mask.s_addr))
                     break;
-            if (ifc)
-                return copyInfo(ifc, res, dst);
+            if (ifc) {
+                res->ifIndex = ifc->index;
+                memcpy(res->macFrom, ifc->mac, ETH_ALEN);
+                return arpGet(res->macTo, ifc->name, (in_addr){rt->nextHop}) == 0;
+            }
             break;
         }
     return false;

@@ -19,7 +19,7 @@ inline int computeRIPTo(RIP_Packet* rip, in_addr_t addr, in_addr_t mask) {
             continue;
         rip->entry[cnt].afi = 2;
         rip->entry[cnt].rtag = 0;
-        rip->entry[cnt].addr = ifc->addr.s_addr;
+        rip->entry[cnt].addr = ifc->addr.s_addr & ifc->mask.s_addr;
         rip->entry[cnt].mask = ifc->mask.s_addr;
         rip->entry[cnt].metric = 1;
         rip->entry[cnt].nextHop = 0x0;
@@ -30,12 +30,14 @@ inline int computeRIPTo(RIP_Packet* rip, in_addr_t addr, in_addr_t mask) {
             continue;
         rip->entry[cnt].afi = 2;
         rip->entry[cnt].rtag = 0;
-        rip->entry[cnt].addr = rt->addr;
+        rip->entry[cnt].addr = rt->addr & rt->mask;
         rip->entry[cnt].mask = rt->mask;
         rip->entry[cnt].metric = rt->metric;
         rip->entry[cnt].nextHop = rt->nextHop;
         ++cnt;
     }
+    for (int i = 0; i < cnt; ++i)
+        rip->entry[i].reverseEndian();
     return cnt * 20 + 4;
 }
 
