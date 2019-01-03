@@ -65,7 +65,7 @@ bool net_monitor() {
 
         /* Interface Index */
         string ifindexName = base + cur->ifa_name + "/ifindex";
-        fin = fopen(addrName.c_str(), "r");
+        fin = fopen(ifindexName.c_str(), "r");
         int ifIndex;
         fscanf(fin, "%d", &ifIndex);
         fclose(fin);
@@ -143,6 +143,6 @@ bool net_monitor() {
     else
         freeIfList(if_head);
     freeifaddrs(ifa);
-    printf("[NetMon] %d interface(s)\n", newIfCount);
+    printf("\033[36m[NetMon]\033[0m %d interface(s)\n", newIfCount);
     return ret;
 }

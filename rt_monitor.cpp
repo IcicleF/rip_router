@@ -8,7 +8,7 @@ bool rt_monitor(const TimePoint now) {
     if (counter == 20)
         counter = 0;
     if (counter == 1)
-        printf("[RtMon]\n");
+        printf("\033[36m[RtMon]\033[0m\n");
     for (RT* cur = gl->rt_head; cur; cur = cur->next) {
         if (now > cur->expire)
             cur->metric = 16;

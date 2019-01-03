@@ -107,7 +107,7 @@ void eth_monitor() {
     }
 
     NextHopInfo nhi;
-    printf("[EthMon] Started.\n");
+    printf("\033[36m[EthMon]\033[0m Started.\n");
     while (true) {
         recvlen = recv(recvfd, pbuf, sizeof(pbuf), 0);
         if (recvlen <= 0)
@@ -116,7 +116,7 @@ void eth_monitor() {
         ip* recvhdr = (ip*)(pbuf + sizeof(ether_header));
         in_addr_t dstAddrType = recvhdr->ip_dst.s_addr & 0xFF;
         if (dstAddrType != 0x7F && dstAddrType != 0xE0) {
-            printf("[EthMon] received packet to %s\n", inet_ntoa(recvhdr->ip_dst));
+            printf("\033[36m[EthMon]\033[0m received packet to %s\n", inet_ntoa(recvhdr->ip_dst));
             if (!validateChecksum(*recvhdr))
                 continue;
             if (recvhdr->ip_ttl == 0)
@@ -126,7 +126,7 @@ void eth_monitor() {
         
             if (!lookupRoute(recvhdr->ip_dst, &nhi))
                 continue;
-            printf("[EthMon] found next hop via if_index %d\n", nhi.ifIndex);
+            printf("\033[36m[EthMon]\033[0m found next hop via if_index %d\n", nhi.ifIndex);
             memcpy(eh->h_dest, nhi.macTo, ETH_ALEN);
             memcpy(eh->h_source, nhi.macFrom, ETH_ALEN);
             eh->h_proto = htons(ETHERTYPE_IP);

@@ -41,7 +41,7 @@ int main() {
         int recvlen = recvfrom(sockfd, rip.buf, BUFLEN, 0, (sockaddr*)(&src_addr), (socklen_t*)(&len));
         if (recvlen <= 0)
             continue;
-        printf("[Main] received rip from %s", inet_ntoa(src_addr.sin_addr));
+        printf("\033[36m[Main]\033[0m received rip from %s", inet_ntoa(src_addr.sin_addr));
         in_addr_t from = src_addr.sin_addr.s_addr;
         bool isSelf = false;
         for (Interface* ifc = gl->if_head; ifc; ifc = ifc->next)
@@ -76,6 +76,10 @@ int main() {
                 rip.entry[i].metric += 1;
                 if (rip.entry[i].metric > 16)
                     rip.entry[i].metric = 16;
+                if ((rip.entry[i].addr & 0xFF) == 0)
+                    continue;
+                if ((rip.entry[i].addr & 0xFF) == 0x7F)
+                    continue;
                 bool found = false;
                 for (RT* rt = gl->rt_head; rt; rt = rt->next)
                     if (rt->addr == rip.entry[i].addr && rt->mask == rip.entry[i].mask) {
